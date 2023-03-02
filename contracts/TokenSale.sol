@@ -3,7 +3,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./MyERC20.sol";
+import "./MyERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 interface IMyToken is IERC20{
     function mint(address to, uint256 amount) external;

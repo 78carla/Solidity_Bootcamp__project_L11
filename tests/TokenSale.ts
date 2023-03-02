@@ -115,94 +115,97 @@ describe("NFT Shop", async () => {
         TEST_TOKEN_MINT.mul(TEST_TOKEN_RATIO)
       );
     });
-  });
-  describe("When a user burns an ERC20 at the Shop contract", async () => {
-    let tokenBalanceBeforeBurn: BigNumber;
-    let burnAmount: BigNumber;
-    let ethBalanceBeforeBurn: BigNumber;
-    let allowTxGasCost: BigNumber;
-    let burnTxGasCost: BigNumber;
 
-    beforeEach(async () => {
-      ethBalanceBeforeBurn = await tokenContract.balanceOf(account1.address);
-      tokenBalanceBeforeBurn = await tokenContract.balanceOf(account1.address);
-      burnAmount = tokenBalanceBeforeBurn.div(2);
+    describe("When a user burns an ERC20 at the Shop contract", async () => {
+      let tokenBalanceBeforeBurn: BigNumber;
+      let burnAmount: BigNumber;
+      let ethBalanceBeforeBurn: BigNumber;
+      let allowTxGasCost: BigNumber;
+      let burnTxGasCost: BigNumber;
 
-      const allowTx = await tokenContract
-        .connect(account1)
-        .approve(tokenSaleContract.address, burnAmount);
-      const allowTxReceipt = await allowTx.wait();
+      beforeEach(async () => {
+        ethBalanceBeforeBurn = await tokenContract.balanceOf(account1.address);
+        tokenBalanceBeforeBurn = await tokenContract.balanceOf(
+          account1.address
+        );
+        burnAmount = tokenBalanceBeforeBurn.div(2);
 
-      allowTxGasCost = allowTxReceipt.gasUsed.mul(
-        allowTxReceipt.effectiveGasPrice
-      );
+        const allowTx = await tokenContract
+          .connect(account1)
+          .approve(tokenSaleContract.address, burnAmount);
+        const allowTxReceipt = await allowTx.wait();
 
-      const burnTx = await tokenSaleContract
-        .connect(account1)
-        .burnTokens(burnAmount);
-      await burnTx.wait();
-      const burnTxReceipt = await burnTx.wait();
+        allowTxGasCost = allowTxReceipt.gasUsed.mul(
+          allowTxReceipt.effectiveGasPrice
+        );
 
-      burnTxGasCost = burnTxReceipt.gasUsed.mul(
-        burnTxReceipt.effectiveGasPrice
-      );
+        const burnTx = await tokenSaleContract
+          .connect(account1)
+          .burnTokens(burnAmount);
+        await burnTx.wait();
+        const burnTxReceipt = await burnTx.wait();
+
+        burnTxGasCost = burnTxReceipt.gasUsed.mul(
+          burnTxReceipt.effectiveGasPrice
+        );
+      });
+
+      it("gives the correct amount of ETH", async () => {
+        const ethBalanceAfterBurn = await account1.getBalance();
+        const diff = ethBalanceAfterBurn.sub(ethBalanceBeforeBurn);
+        const costs = allowTxGasCost.add(burnTxGasCost);
+        expect(diff).to.eq(burnAmount.div(TEST_TOKEN_RATIO).sub(costs));
+      });
+
+      it("burns the correct amount of tokens", async () => {
+        const tokenBalanceAfterBurn = await tokenContract.balanceOf(
+          account1.address
+        );
+        console.log(tokenBalanceAfterBurn);
+        console.log(tokenBalanceAfterBurn);
+
+        const diff = tokenBalanceBeforeBurn.sub(tokenBalanceAfterBurn);
+        expect(diff).to.eq(burnAmount);
+      });
     });
 
-    it("gives the correct amount of ETH", async () => {
-      const ethBalanceAfterBurn = await account1.getBalance();
-      const diff = ethBalanceAfterBurn.sub(ethBalanceBeforeBurn);
-      const costs = allowTxGasCost.add(burnTxGasCost);
-      expect(diff).to.eq(burnAmount.div(TEST_TOKEN_RATIO).sub(costs));
-    });
+    describe("When a user purchase a NFT from the Shop contract", async () => {
+      let tokenBalanceBeforeBuyNFT: BigNumber;
 
-    it("burns the correct amount of tokens", async () => {
-      const tokenBalanceAfterBurn = await tokenContract.balanceOf(
-        account1.address
-      );
-      console.log(tokenBalanceAfterBurn);
-      console.log(tokenBalanceAfterBurn);
+      beforeEach(async () => {
+        tokenBalanceBeforeBuyNFT = await tokenContract.balanceOf(
+          account1.address
+        );
 
-      const diff = tokenBalanceBeforeBurn.sub(tokenBalanceAfterBurn);
-      expect(diff).to.eq(burnAmount);
-    });
-  });
+        const allowTx = await tokenContract
+          .connect(account1)
+          .approve(tokenSaleContract.address, TEST_TOKEN_PRICE);
+        await allowTx.wait();
 
-  describe("When a user purchase a NFT from the Shop contract", async () => {
-    let tokenBalanceBeforeBuyNFT: BigNumber;
+        const buyTx = await tokenSaleContract
+          .connect(account1)
+          .buyNFT(TEST_NFT_ID);
+        await buyTx.wait();
+      });
 
-    beforeEach(async () => {
-      tokenBalanceBeforeBuyNFT = await tokenContract.balanceOf(
-        account1.address
-      );
+      it("charges the correct amount of ERC20 tokens", async () => {
+        const tokenBalanceAfterBuyNFT = await tokenContract.balanceOf(
+          account1.address
+        );
 
-      const allowTx = await tokenContract
-        .connect(account1)
-        .approve(tokenSaleContract.address, TEST_TOKEN_PRICE);
-      await allowTx.wait();
+        const diff = tokenBalanceBeforeBuyNFT.sub(tokenBalanceAfterBuyNFT);
+        expect(diff).to.eq(TEST_TOKEN_PRICE);
+      });
 
-      const buyTx = await tokenSaleContract
-        .connect(account1)
-        .buyNFT(TEST_NFT_ID);
-      await buyTx.wait();
-    });
+      it("gives the correct nft", async () => {
+        const nftOwner = await NFTContract.ownerOf(TEST_NFT_ID);
+        expect(nftOwner).to.eq(account1.address);
+      });
 
-    it("charges the correct amount of ERC20 tokens", async () => {
-      const tokenBalanceAfterBuyNFT = await tokenContract.balanceOf(
-        account1.address
-      );
-
-      const diff = tokenBalanceBeforeBuyNFT.sub(tokenBalanceAfterBuyNFT);
-      expect(diff).to.eq(TEST_TOKEN_PRICE);
-    });
-
-    it("gives the correct nft", async () => {
-      const nftOwner = await NFTContract.ownerOf(TEST_NFT_ID);
-      expect(nftOwner).to.eq(account1.address);
-    });
-
-    it("updates the owner pool account correctly", async () => {
-      const withrableAmount = await tokenSaleContract.withdrawableAmount();
-      expect(withrableAmount).to.eq(TEST_TOKEN_PRICE.div(2));
+      it("updates the owner pool account correctly", async () => {
+        const withrableAmount = await tokenSaleContract.withdrawableAmount();
+        expect(withrableAmount).to.eq(TEST_TOKEN_PRICE.div(2));
+      });
     });
   });
 });

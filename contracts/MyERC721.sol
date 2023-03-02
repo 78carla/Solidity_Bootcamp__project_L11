@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
-contract MyNFT is ERC721, ERC721Burnable, AccessControl{
+contract MyNFT is ERC721, AccessControl, ERC721Burnable{
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     constructor () ERC721 ("MyERC20", "MTK") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
